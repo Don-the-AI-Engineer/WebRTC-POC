@@ -1,23 +1,29 @@
-from aiohttp import web
-import socketio
+import asyncio
+import websockets
 
-sio = socketio.AsyncServer(async_mode='aiohttp')
-app = web.Application()
-sio.attach(app)
+clients = {}  # Dictionary to store connected clients
 
-@sio.event
-async def connect(sid, environ):
-    print(f"Client connected: {sid}")
+async def handler(websocket):  # Ensure handler accepts two arguments
+    try:
+        client_type = await websocket.recv()  # Expect "A" or "B" as identifier
+        clients[client_type] = websocket
+        print(f"Client {client_type} connected")
 
-@sio.event
-async def offer(sid, data):
-    print(f"Offer received from {sid}")
-    await sio.emit('answer', data, room=sid)
+        async for message in websocket:
+            print(f"Received from {client_type}: {message}")
+            if client_type == "A" and "B" in clients:
+                await clients["B"].send(message)  # Forward command to B
+    except websockets.ConnectionClosed:
+        print(f"Client {client_type} disconnected")
+    finally:
+        if client_type in clients:
+            del clients[client_type]
 
-@sio.event
-async def ice_candidate(sid, data):
-    print(f"ICE candidate received from {sid}")
-    await sio.emit('ice_candidate', data, room=sid)
+async def main():
+    server = await websockets.serve(handler, "localhost", 8765)  # Await WebSocket server
+    print("WebSocket server started on ws://localhost:8765")
+    await server.wait_closed()  # Keeps the server running
 
-if __name__ == '__main__':
-    web.run_app(app, port=8080)
+# Ensure compatibility with asyncio
+if __name__ == "__main__":
+    asyncio.run(main())
