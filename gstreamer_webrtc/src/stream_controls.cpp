@@ -2,7 +2,7 @@
 #include <iostream>
 #include "stream_controls.h"
 
-extern GstElement *pipeline; // Defined in gstreamer_pipeline.cpp
+extern GstElement *pipeline;
 
 void mute_audio() {
     GstElement *audio_sink = gst_bin_get_by_name(GST_BIN(pipeline), "audio_sink");
